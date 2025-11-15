@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Transaction {
+  id                 String          @id
+  type               TransactionType
+  description        String
+  amountCents        Int             @map("amount_cents")
+  categoryName       String?         @map("category_name")
+  cardName           String?         @map("card_name")
+  date               DateTime
+  recurrenceType     RecurrenceType  @map("recurrence_type")
+  installmentTotal   Int?            @map("installment_total")
+  installmentCurrent Int?            @map("installment_current")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  @@map("transactions")
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+
+  @@map("transaction_type")
+}
+
+enum RecurrenceType {
+  SINGLE
+  INSTALLMENT
+  RECURRING
+
+  @@map("recurrence_type")
+}
