@@ -1,0 +1,13 @@
+services:
+  easy-budget:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: easy-budget
+    env_file:
+      - .env
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    volumes:
+      - ./src:/app/src:ro
+      - ./logs:/app/logs
