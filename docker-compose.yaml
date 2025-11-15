@@ -8,6 +8,11 @@ services:
       - .env
     ports:
       - "${PORT:-3000}:${PORT:-3000}"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-3000}/docs/json"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
     volumes:
       - ./src:/app/src:ro
       - ./logs:/app/logs
