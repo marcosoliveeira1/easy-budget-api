@@ -23,9 +23,9 @@ export class CreateTransactionUseCase {
     }
 
     const transactions: Transaction[] = [];
+    const baseDate = new Date(input?.date || new Date());
     for (let i = 1; i <= input.installments; i++) {
-      const transactionDate = new Date(input?.date || new Date());
-      transactionDate.setMonth(transactionDate.getMonth() + (i - 1));
+      const transactionDate = this.addMonthsKeepingLastDay(baseDate, i - 1);
 
       const installmentTransaction = Transaction.create({
         ...input,
@@ -42,5 +42,12 @@ export class CreateTransactionUseCase {
     return {
       transactions: createdTransactions,
     };
+  }
+
+  private addMonthsKeepingLastDay(date: Date, months: number): Date {
+    const year = date.getFullYear();
+    const month = date.getMonth() + months + 1; // +1 to jump to next month
+    const lastDay = new Date(year, month, 0);   // day 0 = last day of prev month
+    return lastDay;
   }
 }
