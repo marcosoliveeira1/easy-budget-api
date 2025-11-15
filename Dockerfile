@@ -14,7 +14,4 @@ COPY prisma ./prisma
 
 RUN npm run prisma:generate
 
-# Install tsx for running TypeScript
-RUN npm i -g tsx
-
-CMD ["tsx", "src/main.ts"]
+CMD ["npm", "run", "dev"]
