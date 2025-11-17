@@ -29,11 +29,12 @@ export const createTransactionBodySchema = z.object({
   type: z.optional(z.enum(TransactionType)).default(TransactionType.EXPENSE),
   description: z.string().min(1),
   amount: z.number().positive(),
-  categoryName: z.string().optional(),
-  cardName: z.string().optional(),
+  categoryName: z.string().nullable().optional(),
+  cardName: z.string().nullable().optional(),
   date: z.coerce.date().optional(),
-  installments: z.number().int().positive().optional(),
+  installments: z.number().int().positive().nullable().optional(),
 });
+
 
 export const getTransactionsQuerySchema = z.object({
   cardName: z.string().optional(),
