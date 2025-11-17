@@ -8,19 +8,33 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Card {
+  id         String @id
+  name       String @unique
+  closingDay Int    @map("closing_day")
+  dueDay     Int    @map("due_day")
+
+  transactions Transaction[]
+
+  @@map("cards")
+}
+
 model Transaction {
   id                 String          @id
   type               TransactionType
   description        String
   amountCents        Int             @map("amount_cents")
   categoryName       String?         @map("category_name")
-  cardName           String?         @map("card_name")
   date               DateTime
+  referenceDate      DateTime?       @map("reference_date")
   recurrenceType     RecurrenceType  @map("recurrence_type")
   installmentTotal   Int?            @map("installment_total")
   installmentCurrent Int?            @map("installment_current")
   createdAt          DateTime        @default(now()) @map("created_at")
   updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  cardId String? @map("card_id")
+  card   Card?   @relation(fields: [cardId], references: [id])
 
   @@map("transactions")
 }
