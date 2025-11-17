@@ -2,7 +2,7 @@ import { TransactionType } from '@/domain/enums/transaction-type.enum';
 import { RecurrenceType } from '@/domain/enums/recurrence-type.enum';
 
 export interface GetTransactionsInputDto {
-  cardName?: string;
+  cardId?: string;
   startDate?: Date;
   endDate?: Date;
 }

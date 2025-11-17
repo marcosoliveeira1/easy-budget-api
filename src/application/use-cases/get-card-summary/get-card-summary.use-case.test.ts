@@ -6,33 +6,41 @@ import {
 import { DomainError } from '@/shared/errors/domain-error';
 
 // Mock
-const mockSummary: TransactionSummary = {
-  totalIncome: 5000,
-  totalExpense: 1500,
-  balance: 3500,
-  transactionCount: 10,
+const mockSummary: Record<string, TransactionSummary> = {
+  card1: {
+    totalIncome: 5000,
+    totalExpense: 1500,
+    balance: 3500,
+    transactionCount: 10,
+  }
 };
 
 const mockTransactionRepository: ITransactionRepository = {
   create: vi.fn(),
   createMany: vi.fn(),
   find: vi.fn(),
-  getSummary: vi.fn().mockResolvedValue(mockSummary),
-  getSummaryByCardNameAndDate: vi.fn().mockResolvedValue(new Map<string, TransactionSummary>([['card1', mockSummary]])),
+  getSummary: vi.fn(),
+  getSummaryByCardNameAndDate: vi.fn().mockResolvedValue(mockSummary),
 };
 
 describe('GetCardSummaryUseCase', () => {
-  it('should return a transaction summary', async () => {
+  it('should call the repository with the correct end of day and return a summary', async () => {
     const useCase = new GetCardSummaryUseCase(mockTransactionRepository);
     const input = {
       startDate: new Date('2025-01-01'),
       endDate: new Date('2025-01-31'),
-      cardName: 'card1',
+      cardId: 'card1',
     };
 
     const output = await useCase.execute(input);
 
-    expect(mockTransactionRepository.getSummaryByCardNameAndDate).toHaveBeenCalledWith(input);
+    const expectedEndDate = new Date(input.endDate);
+    expectedEndDate.setHours(23, 59, 59, 999);
+
+    expect(mockTransactionRepository.getSummaryByCardNameAndDate).toHaveBeenCalledWith({
+      ...input,
+      endDate: expectedEndDate,
+    });
     expect(output).toEqual(mockSummary);
   });
 

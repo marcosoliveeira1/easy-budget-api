@@ -9,8 +9,10 @@ export interface CreateTransactionProps {
   description: string;
   amount: number;
   categoryName?: string;
+  cardId?: string;
   cardName?: string;
   date?: Date;
+  referenceDate?: Date;
   recurrenceType: RecurrenceType;
   installmentTotal?: number;
   installmentCurrent?: number;
@@ -95,11 +97,17 @@ export class Transaction {
   get categoryName(): string | undefined {
     return this.props.categoryName;
   }
+  get cardId(): string | undefined {
+    return this.props.cardId;
+  }
   get cardName(): string | undefined {
     return this.props.cardName;
   }
   get date(): Date {
     return this.props.date;
+  }
+  get referenceDate(): Date | undefined {
+    return this.props.referenceDate;
   }
   get recurrenceType(): RecurrenceType {
     return this.props.recurrenceType;

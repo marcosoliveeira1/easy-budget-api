@@ -1,7 +1,7 @@
 export interface GetTransactionSummaryInputDto {
   startDate: Date;
   endDate: Date;
-  cardName?: string;
+  cardId?: string;
 }
 
 export interface GetTransactionSummaryOutputDto {

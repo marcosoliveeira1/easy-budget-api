@@ -1,7 +1,7 @@
 import { Transaction } from "@/domain/entities/transaction.entity";
 
 export interface FindTransactionsParams {
-  cardName?: string;
+  cardId?: string;
   startDate?: Date;
   endDate?: Date;
 }
@@ -16,7 +16,7 @@ export interface TransactionSummary {
 export interface GetSummaryParams {
   startDate: Date;
   endDate: Date;
-  cardName?: string;
+  cardId?: string;
 }
 
 export interface ITransactionRepository {

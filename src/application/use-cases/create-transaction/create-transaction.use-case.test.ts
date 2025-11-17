@@ -1,78 +1,106 @@
-import { afterEach, describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CreateTransactionUseCase } from './create-transaction.use-case';
 import { ITransactionRepository } from '@/domain/repositories/transaction.repository';
 import { TransactionType } from '@/domain/enums/transaction-type.enum';
 import { Transaction } from '@/domain/entities/transaction.entity';
+import { TransactionFactory } from '@/domain/factories/transaction.factory';
 
-// Mock do Repositório
+// Mocks
 const mockTransactionRepository: ITransactionRepository = {
-    create: vi.fn(),
-    createMany: vi.fn(),
-    find: vi.fn(),
-    getSummary: vi.fn(),
+  create: vi.fn(),
+  createMany: vi.fn(),
+  find: vi.fn(),
+  getSummary: vi.fn(),
+  getSummaryByCardNameAndDate: vi.fn(),
 };
 
+const mockTransactionFactory: TransactionFactory = {
+  create: vi.fn(),
+} as any;
+
+const mockSingleTransaction = Transaction.create({
+  type: TransactionType.EXPENSE,
+  description: 'Single',
+  amount: 10,
+  recurrenceType: 'single',
+});
+
+const mockMultipleTransactions = [
+  Transaction.create({
+    type: TransactionType.EXPENSE,
+    description: 'Installment 1',
+    amount: 10,
+    recurrenceType: 'installment',
+    installmentCurrent: 1,
+    installmentTotal: 2,
+  }),
+  Transaction.create({
+    type: TransactionType.EXPENSE,
+    description: 'Installment 2',
+    amount: 10,
+    recurrenceType: 'installment',
+    installmentCurrent: 2,
+    installmentTotal: 2,
+  }),
+];
+
 describe('CreateTransactionUseCase', () => {
-    afterEach(() => {
-        vi.clearAllMocks();
-    });
+  let useCase: CreateTransactionUseCase;
 
-    it('should create a single transaction', async () => {
-        const useCase = new CreateTransactionUseCase(mockTransactionRepository);
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useCase = new CreateTransactionUseCase(
+      mockTransactionRepository,
+      mockTransactionFactory,
+    );
+  });
 
-        const input = {
-            type: TransactionType.EXPENSE,
-            description: 'Almoço',
-            amount: 25.5
-        };
+  it('should call transactionRepository.create when factory returns a single transaction', async () => {
+    vi.spyOn(mockTransactionFactory, 'create').mockResolvedValueOnce([
+      mockSingleTransaction,
+    ]);
+    vi.spyOn(mockTransactionRepository, 'create').mockResolvedValueOnce(
+      mockSingleTransaction,
+    );
 
-        const output = await useCase.execute(input);
+    const input = {
+      type: TransactionType.EXPENSE,
+      description: 'Single',
+      amount: 10,
+    };
 
-        expect(output.transactions).toHaveLength(1);
-        expect(mockTransactionRepository.create).toHaveBeenCalledTimes(1);
-        expect(mockTransactionRepository.createMany).not.toHaveBeenCalled();
-        const createdTransaction = (mockTransactionRepository.create as any).mock
-            .calls as Transaction[0];
-        expect(createdTransaction[0].description).toBe('Almoço');
-        expect(createdTransaction[0].installmentTotal).toBe(1);
-    });
+    const output = await useCase.execute(input);
 
-    it('should create multiple transactions for an installment purchase', async () => {
-        const useCase = new CreateTransactionUseCase(mockTransactionRepository);
+    expect(mockTransactionFactory.create).toHaveBeenCalledWith(input);
+    expect(mockTransactionRepository.create).toHaveBeenCalledWith(
+      mockSingleTransaction,
+    );
+    expect(mockTransactionRepository.createMany).not.toHaveBeenCalled();
+    expect(output.transactions).toEqual([mockSingleTransaction]);
+  });
 
-        const input = {
-            type: TransactionType.EXPENSE,
-            description: 'Celular novo',
-            amount: 500,
-            categoryName: 'cat2',
-            cardName: 'card2',
-            date: new Date('2025-01-15T03:00:00.000Z'), // Usar UTC para evitar issues com timezone
-            installments: 3,
-        };
+  it('should call transactionRepository.createMany when factory returns multiple transactions', async () => {
+    vi.spyOn(mockTransactionFactory, 'create').mockResolvedValueOnce(
+      mockMultipleTransactions,
+    );
+    vi.spyOn(mockTransactionRepository, 'createMany').mockResolvedValueOnce(
+      mockMultipleTransactions,
+    );
 
-        const { transactions } = await useCase.execute(input);
-        // expect(output.transactions).toHaveLength(3); // @fix later
-        expect(mockTransactionRepository.createMany).toHaveBeenCalledTimes(1);
-        expect(mockTransactionRepository.create).not.toHaveBeenCalled();
+    const input = {
+      type: TransactionType.EXPENSE,
+      description: 'Installments',
+      amount: 20,
+      installments: 2,
+    };
 
+    const output = await useCase.execute(input);
 
-        expect(transactions).toHaveLength(3);
-        console.log({ transactions });
-        // Primeira parcela
-        expect(transactions[0].description).toBe('Celular novo');
-        expect(transactions[0].installmentCurrent).toBe(1);
-        expect(transactions[0].installmentTotal).toBe(3);
-        expect(transactions[0].date.getUTCMonth()).toBe(0); // Janeiro
-        expect(transactions[0].date.getUTCDate()).toBe(15);
-
-        // Segunda parcela
-        expect(transactions[1].installmentCurrent).toBe(2);
-        expect(transactions[1].date.getUTCMonth()).toBe(1); // Fevereiro
-        expect(transactions[1].date.getUTCDate()).toBe(15);
-
-        // Terceira parcela
-        expect(transactions[2].installmentCurrent).toBe(3);
-        expect(transactions[2].date.getUTCMonth()).toBe(2); // Março
-        expect(transactions[2].date.getUTCDate()).toBe(15);
-    });
+    expect(mockTransactionFactory.create).toHaveBeenCalledWith(input);
+    expect(mockTransactionRepository.createMany).toHaveBeenCalledWith(
+      mockMultipleTransactions,
+    );
+    expect(mockTransactionRepository.create).not.toHaveBeenCalled();
+    expect(output.transactions).toEqual(mockMultipleTransactions);
+  });
 });

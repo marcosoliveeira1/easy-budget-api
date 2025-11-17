@@ -1,4 +1,8 @@
-import { PrismaClient, Transaction as PrismaTransaction } from '@prisma/client';
+import {
+  PrismaClient,
+  Transaction as PrismaTransaction,
+  Card as PrismaCard,
+} from '@prisma/client';
 import { Transaction } from '@/domain/entities/transaction.entity';
 import {
   FindTransactionsParams,
@@ -9,15 +13,19 @@ import {
 import { TransactionType } from '@/domain/enums/transaction-type.enum';
 import { RecurrenceType } from '@/domain/enums/recurrence-type.enum';
 
-const toDomain = (prismaTransaction: PrismaTransaction): Transaction => {
+type PrismaTransactionWithCard = PrismaTransaction & { card?: PrismaCard | null };
+
+const toDomain = (prismaTransaction: PrismaTransactionWithCard): Transaction => {
   return Transaction.create({
     id: prismaTransaction.id,
     type: prismaTransaction.type.toLowerCase() as TransactionType,
     description: prismaTransaction.description,
     amount: prismaTransaction.amountCents / 100,
     categoryName: prismaTransaction.categoryName ?? undefined,
-    cardName: prismaTransaction.cardName ?? undefined,
+    cardId: prismaTransaction.cardId ?? undefined,
+    cardName: prismaTransaction.card?.name ?? undefined,
     date: prismaTransaction.date,
+    referenceDate: prismaTransaction.referenceDate ?? undefined,
     recurrenceType:
       prismaTransaction.recurrenceType.toLowerCase() as RecurrenceType,
     installmentTotal: prismaTransaction.installmentTotal ?? undefined,
@@ -38,8 +46,9 @@ export class PrismaTransactionRepository implements ITransactionRepository {
         description: transaction.description,
         amountCents: Math.round(transaction.amount * 100),
         categoryName: transaction.categoryName,
-        cardName: transaction.cardName,
+        cardId: transaction.cardId,
         date: transaction.date,
+        referenceDate: transaction.referenceDate,
         recurrenceType: transaction.recurrenceType.toUpperCase() as any,
         installmentTotal: transaction.installmentTotal,
         installmentCurrent: transaction.installmentCurrent,
@@ -55,8 +64,9 @@ export class PrismaTransactionRepository implements ITransactionRepository {
       description: t.description,
       amountCents: Math.round(t.amount * 100),
       categoryName: t.categoryName,
-      cardName: t.cardName,
+      cardId: t.cardId,
       date: t.date,
+      referenceDate: t.referenceDate,
       recurrenceType: t.recurrenceType.toUpperCase() as any,
       installmentTotal: t.installmentTotal,
       installmentCurrent: t.installmentCurrent,
@@ -68,18 +78,23 @@ export class PrismaTransactionRepository implements ITransactionRepository {
 
   async find(params: FindTransactionsParams): Promise<Transaction[]> {
     const where: any = {};
-    if (params.cardName) {
-      where.cardName = params.cardName;
+    if (params.cardId) {
+      where.cardId = params.cardId;
     }
+
+    // Lógica para filtrar por data de referência (fatura) ou data da transação
     if (params.startDate && params.endDate) {
-      where.date = {
-        gte: params.startDate,
-        lte: params.endDate,
-      };
+      where.OR = [
+        { referenceDate: { gte: params.startDate, lte: params.endDate } },
+        { referenceDate: null, date: { gte: params.startDate, lte: params.endDate } },
+      ];
     }
 
     const prismaTransactions = await this.prisma.transaction.findMany({
       where,
+      include: {
+        card: true,
+      },
       orderBy: {
         date: 'desc',
       },
@@ -89,14 +104,17 @@ export class PrismaTransactionRepository implements ITransactionRepository {
   }
 
   async getSummary(params: GetSummaryParams): Promise<TransactionSummary> {
-    const where: any = {
-      date: {
-        gte: params.startDate,
-        lte: params.endDate,
-      },
-    };
-    if (params.cardName) {
-      where.cardName = params.cardName;
+    const where: any = {};
+    if (params.cardId) {
+      where.cardId = params.cardId;
+    }
+
+    // Lógica para filtrar por data de referência (fatura) ou data da transação
+    if (params.startDate && params.endDate) {
+      where.OR = [
+        { referenceDate: { gte: params.startDate, lte: params.endDate } },
+        { referenceDate: null, date: { gte: params.startDate, lte: params.endDate } },
+      ];
     }
 
     const aggregations = await this.prisma.transaction.aggregate({
@@ -136,19 +154,19 @@ export class PrismaTransactionRepository implements ITransactionRepository {
 
   async getSummaryByCardNameAndDate(params: GetSummaryParams): Promise<Record<string, TransactionSummary>> {
     const where: any = {
-      date: {
-        gte: params.startDate,
-        lte: params.endDate,
-      },
-      cardName: { not: null }
+      cardId: { not: null },
+      OR: [
+        { referenceDate: { gte: params.startDate, lte: params.endDate } },
+        { referenceDate: null, date: { gte: params.startDate, lte: params.endDate } },
+      ]
     };
 
-    if (params.cardName) {
-      where.cardName = params.cardName;
+    if (params.cardId) {
+      where.cardId = params.cardId;
     }
 
     const groupedData = await this.prisma.transaction.groupBy({
-      by: ['cardName', 'type'],
+      by: ['cardId', 'type'],
       where,
       _sum: {
         amountCents: true,
@@ -158,10 +176,18 @@ export class PrismaTransactionRepository implements ITransactionRepository {
       },
     });
 
+    if (groupedData.length === 0) return {};
+
+    const cardIds = groupedData.map(g => g.cardId).filter((id): id is string => id !== null);
+    const cards = await this.prisma.card.findMany({ where: { id: { in: cardIds } } });
+    const cardIdToNameMap = new Map(cards.map(c => [c.id, c.name]));
+
     const summary: Record<string, TransactionSummary> = {};
 
     for (const group of groupedData) {
-      const cardName = group.cardName as string;
+      const cardName = cardIdToNameMap.get(group.cardId as string);
+      if (!cardName) continue;
+
       const type = group.type;
       const amountCents = group._sum.amountCents || 0;
       const count = group._count.id;

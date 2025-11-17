@@ -19,7 +19,7 @@ const mockTransactionRepository: ITransactionRepository = {
   createMany: vi.fn(),
   find: vi.fn(),
   getSummary: vi.fn().mockResolvedValue(mockSummary),
-  getSummaryByCardNameAndDate: vi.fn().mockResolvedValue(new Map<string, TransactionSummary>([['card1', mockSummary]])),
+  getSummaryByCardNameAndDate: vi.fn(),
 };
 
 describe('GetTransactionSummaryUseCase', () => {
@@ -28,12 +28,18 @@ describe('GetTransactionSummaryUseCase', () => {
     const input = {
       startDate: new Date('2025-01-01'),
       endDate: new Date('2025-01-31'),
-      cardName: 'card1',
+      cardId: 'card1',
     };
 
     const output = await useCase.execute(input);
 
-    expect(mockTransactionRepository.getSummary).toHaveBeenCalledWith(input);
+    const expectedEndDate = new Date(input.endDate);
+    expectedEndDate.setHours(23, 59, 59, 999);
+
+    expect(mockTransactionRepository.getSummary).toHaveBeenCalledWith({
+      ...input,
+      endDate: expectedEndDate,
+    });
     expect(output).toEqual(mockSummary);
   });
 

@@ -8,6 +8,7 @@ export interface CreateTransactionInputDto {
   categoryName?: string;
   cardName?: string;
   date?: Date;
+  referenceDate?: Date;
   installments?: number;
 }
 

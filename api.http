@@ -1,0 +1,10 @@
+POST http://localhost:3000/v1/transactions
+Content-Type: application/json
+
+{
+  "cardName": "BTG",
+  "date": "2025-07-31T00:00:00.000Z",
+  "description": "Azul Seguros",
+  "amount": 214.4,
+  "installments": 10
+}

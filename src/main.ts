@@ -7,6 +7,9 @@ import { TransactionController } from './infra/http/controllers/transaction.cont
 import { createServer } from './infra/http/server';
 import { PrismaTransactionRepository } from './infra/repositories/prisma/prisma-transaction.repository';
 import { GetCardSummaryUseCase } from './application/use-cases/get-card-summary/get-card-summary.use-case';
+import { PrismaCardRepository } from './infra/repositories/prisma/prisma-card.repository';
+import { TransactionFactory } from './domain/factories/transaction.factory';
+import { ReferenceDateCalculator } from './domain/services/reference-date-calculator.service';
 
 function log(message: string): void {
   console.log(`[App] ${message}`);
@@ -15,13 +18,22 @@ function log(message: string): void {
 async function main() {
   log('Starting application...');
 
-  // --- Composição de Dependências (Composition Root) ---
+
   // Camada de Repositório
   const transactionRepository = new PrismaTransactionRepository(prisma);
+  const cardRepository = new PrismaCardRepository(prisma);
+
+  // Camada de Serviços de Domínio e Fábricas
+  const referenceDateCalculator = new ReferenceDateCalculator();
+  const transactionFactory = new TransactionFactory(
+    cardRepository,
+    referenceDateCalculator,
+  );
 
   // Camada de Casos de Uso
   const createTransactionUseCase = new CreateTransactionUseCase(
     transactionRepository,
+    transactionFactory,
   );
   const getTransactionsUseCase = new GetTransactionsUseCase(
     transactionRepository,
